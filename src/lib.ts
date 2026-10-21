@@ -1,4 +1,4 @@
-import { createJSONStorage } from 'zustand/middleware'
+import { createJSONStorage, type StorageValue } from 'zustand/middleware'
 import { hashKey, type QueryCacheNotifyEvent } from '@tanstack/react-query'
 import {client} from './client'
 import type { Mutate, StoreApi } from 'zustand'
@@ -10,17 +10,18 @@ const UPDATED_BY_ZUSTAND = 'zustand'
 export const queryStorage = createJSONStorage(() => ({
     getItem: (key) => {
       const data = client.getQueryData(convertToQueryKey(key))
-      return data ? JSON.stringify(data) : null
+      // Query cache holds bare state; persist expects a `{ state, version }` envelope
+      return data === undefined ? null : JSON.stringify({ state: data })
     },
     setItem: (key, value) => {
       const queryKey = convertToQueryKey(key)
+      const { state } = JSON.parse(value) as StorageValue<unknown>
       const query = client.getQueryCache().build(client, { queryKey })
       const previousMeta = query.meta
       // Cache events fire synchronously, so the tag is only visible during this write
       query.setOptions({ ...query.options, meta: { ...previousMeta, updatedBy: UPDATED_BY_ZUSTAND } })
-      client.setQueryData(queryKey, JSON.parse(value))
+      client.setQueryData(queryKey, state)
       query.setOptions({ ...query.options, meta: previousMeta })
-      client.invalidateQueries({ queryKey })
     },
     removeItem: (key) => {
       client.removeQueries({ queryKey: convertToQueryKey(key) })
