@@ -19,7 +19,7 @@ const useStore = create<Store>()(
   persist(
     (set) => ({
       count: window.count,
-      inc: () => set((state) => ({ count: state.count + 1 })),
+      inc: () => set(() => ({ count: ++window.count })),
     }),
     {
       name: 'store',
